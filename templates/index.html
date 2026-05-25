@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人公开信息搜索系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .file-upload {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .file-upload:hover,
+        .file-upload.dragover {
+            border-color: #667eea;
+            background-color: rgba(102, 126, 234, 0.05);
+        }
+        
+        .file-upload i {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .file-upload p {
+            color: #666;
+            font-size: 1rem;
+        }
+        
+        .file-upload small {
+            color: #999;
+            font-size: 0.85rem;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #eee;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 500;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #666;
+            position: relative;
+            transition: color 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+        }
+        
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .tab:hover {
+            color: #667eea;
+        }
+        
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        
+        .alert {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .feature-card {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+        
+        .feature-card p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 个人公开信息搜索系统</h1>
+            <p>上传简历或输入信息，自动搜集全网公开资料</p>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <div class="features">
+            <div class="feature-card">
+                <h3>📰 全网搜索</h3>
+                <p>新闻、公众号等自媒体报道</p>
+            </div>
+            <div class="feature-card">
+                <h3>🏢 企业查询</h3>
+                <p>企查查、爱企查、天眼查</p>
+            </div>
+            <div class="feature-card">
+                <h3>⚖️ 法律信息</h3>
+                <p>裁判文书、执行信息等</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('upload')">上传简历</button>
+                <button class="tab" onclick="showTab('manual')">手动输入</button>
+            </div>
+            
+            <div id="upload-tab">
+                <form id="upload-form" method="POST" enctype="multipart/form-data" novalidate>
+                    {{ upload_form.hidden_tag() }}
+                    
+                    <div class="form-group">
+                        <label>简历文件</label>
+                        <div id="file-upload" class="file-upload" onclick="document.getElementById('file').click();">
+                            <div id="file-upload-icon" style="font-size: 48px; margin-bottom: 15px;">📄</div>
+                            <p id="file-upload-text">点击或拖拽上传简历</p>
+                            <small id="file-upload-hint">支持格式: docx, pdf, jpg, png, bmp, txt</small>
+                            {{ upload_form.file(id='file', class='hidden') }}
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ upload_form.name.label }}
+                        {{ upload_form.name(class='form-control', placeholder='如自动识别失败将使用此姓名') }}
+                    </div>
+                    
+                    <button id="upload-submit" type="submit" class="btn" style="width: 100%;">开始搜索</button>
+                </form>
+            </div>
+            
+            <div id="manual-tab" class="hidden">
+                <form method="POST">
+                    {{ manual_form.hidden_tag() }}
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>姓名 *</label>
+                            <input type="text" name="name" class="form-control" placeholder="请输入姓名" required>
+                        </div>
+                        <div class="form-group">
+                            <label>企业名称</label>
+                            <input type="text" name="company" class="form-control" placeholder="如：腾讯科技">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>岗位</label>
+                            <input type="text" name="position" class="form-control" placeholder="如：高级工程师">
+                        </div>
+                        <div class="form-group">
+                            <label>所在地域</label>
+                            <input type="text" name="region" class="form-control" placeholder="如：深圳">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>电话号码</label>
+                        <input type="text" name="phone" class="form-control" placeholder="如：13800138000">
+                    </div>
+                    
+                    <button type="submit" name="manual_submit" class="btn" style="width: 100%;">开始搜索</button>
+                </form>
+            </div>
+        </div>
+        
+        <div style="text-align: center; color: rgba(255,255,255,0.8); font-size: 0.9rem; margin-top: 30px;">
+            <p>⚠️ 本系统仅搜集公开网络信息，信息存在时效性与局限性</p>
+            <p style="font-size: 0.8rem; margin-top: 5px;">仅供内部风控、招聘筛选参考，不构成法律意见</p>
+        </div>
+    </div>
+    
+    <script>
+        function showTab(tabName, event) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('[id$="-tab"]').forEach(tab => tab.classList.add('hidden'));
+            
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            document.getElementById(tabName + '-tab').classList.remove('hidden');
+        }
+        
+        const uploadForm = document.getElementById('upload-form');
+        const fileUpload = document.querySelector('.file-upload');
+        const fileUploadIcon = document.getElementById('file-upload-icon');
+        const fileUploadText = document.getElementById('file-upload-text');
+        const fileUploadHint = document.getElementById('file-upload-hint');
+        const fileInput = document.getElementById('file');
+        const uploadSubmit = document.getElementById('upload-submit');
+
+        function setUploadingState() {
+            uploadSubmit.disabled = true;
+            uploadSubmit.textContent = '搜索中，请稍候...';
+        }
+
+        function setUploadPreview(filename) {
+            fileUploadIcon.textContent = '✅';
+            fileUploadText.textContent = `已选择: ${filename}`;
+            fileUploadHint.textContent = '点击更换文件';
+        }
+
+        function submitUploadForm() {
+            if (fileInput.files && fileInput.files.length > 0) {
+                setUploadingState();
+                uploadForm.requestSubmit();
+            }
+        }
+
+        function setFilesFromDrop(files) {
+            const dataTransfer = new DataTransfer();
+            Array.from(files).forEach(file => dataTransfer.items.add(file));
+            fileInput.files = dataTransfer.files;
+            fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        
+        fileUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUpload.classList.add('dragover');
+        });
+        
+        fileUpload.addEventListener('dragleave', () => {
+            fileUpload.classList.remove('dragover');
+        });
+        
+        fileUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUpload.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                setFilesFromDrop(files);
+                submitUploadForm();
+            }
+        });
+        
+        fileInput.addEventListener('change', () => {
+            const filename = fileInput.files[0]?.name;
+            if (filename) {
+                setUploadPreview(filename);
+                submitUploadForm();
+            }
+        });
+
+        uploadForm.addEventListener('submit', () => {
+            setUploadingState();
+        });
+    </script>
+</body>
+</html>

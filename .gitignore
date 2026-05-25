@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# App runtime data
+uploads/
+output/
+logs/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Local resume/test files
+*.pdf
+*.docx
+*.doc
+*.xls
+*.xlsx
+
+# Other
+*.log

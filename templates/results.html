@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>搜索结果 - 个人公开信息搜索系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+        
+        .header-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            font-size: 0.95rem;
+        }
+        
+        .header-info span {
+            background: rgba(255,255,255,0.2);
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-title span {
+            font-size: 1.5rem;
+        }
+        
+        .result-count {
+            background: #f0f0f0;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        .result-item {
+            padding: 15px;
+            border-radius: 8px;
+            background: #fafafa;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        
+        .result-item:hover {
+            background: #f0f5ff;
+            transform: translateX(5px);
+        }
+        
+        .result-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .result-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .result-title a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .result-title a:hover {
+            text-decoration: underline;
+        }
+        
+        .result-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        .result-summary {
+            font-size: 0.9rem;
+            color: #555;
+            margin-top: 10px;
+            line-height: 1.5;
+        }
+
+        .alert {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .relevance-badge {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .relevance-badge.medium {
+            background: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
+        }
+        
+        .relevance-badge.low {
+            background: #999;
+        }
+        
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px 15px;
+            margin-top: 10px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.85rem;
+            color: #856404;
+        }
+        
+        .download-section {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .download-section h3 {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .download-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-outline {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .btn-outline:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .empty-state span {
+            font-size: 4rem;
+            display: block;
+            margin-bottom: 15px;
+        }
+        
+        .empty-state p {
+            font-size: 1rem;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .nav-buttons .btn {
+            flex: 1;
+            text-align: center;
+        }
+        
+        @media (max-width: 600px) {
+            .header-info {
+                gap: 10px;
+            }
+            
+            .header-info span {
+                font-size: 0.8rem;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="card" style="padding: 15px;">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        <div class="header">
+            <h1>🔍 搜索结果</h1>
+            <div class="header-info">
+                <span>👤 {{ person_info.get('name', '未知') }}</span>
+                {% if person_info.get('company') %}
+                <span>🏢 {{ person_info.get('company') }}</span>
+                {% endif %}
+                {% if person_info.get('position') %}
+                <span>💼 {{ person_info.get('position') }}</span>
+                {% endif %}
+                {% if person_info.get('region') %}
+                <span>📍 {{ person_info.get('region') }}</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if report_files %}
+        <div class="download-section">
+            <h3>📥 下载报告</h3>
+            <div class="download-buttons">
+                {% if report_files.get('excel') %}
+                <a href="{{ url_for('download_file', filename=report_files['excel'].replace('output\\', '').replace('output/', '')) }}" class="btn" download>
+                    📊 Excel报告
+                </a>
+                {% endif %}
+                {% if report_files.get('word') %}
+                <a href="{{ url_for('download_file', filename=report_files['word'].replace('output\\', '').replace('output/', '')) }}" class="btn" download>
+                    📄 Word报告
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if results.news %}
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>📰</span> 网络新闻及自媒体报道
+                </div>
+                <span class="result-count">{{ results.news|length }} 条结果</span>
+            </div>
+            
+            <div>
+                {% for item in results.news %}
+                <div class="result-item">
+                    <div class="result-title">
+                        <a href="{{ item.get('url', '#') }}" target="_blank">{{ item.get('title', '无标题') }}</a>
+                    </div>
+                    <div class="result-meta">
+                        <span>来源: {{ item.get('source', '未知') }}</span>
+                        {% if item.get('relevance') %}
+                        <span class="relevance-badge {{ 'high' if item.relevance >= 0.8 else 'medium' if item.relevance >= 0.5 else 'low' }}">
+                            相关度: {{ (item.relevance * 100)|round|int }}%
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if item.get('summary') %}
+                    <div class="result-summary">{{ item.summary }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>📰</span> 网络新闻及自媒体报道
+                </div>
+                <span class="result-count">0 条结果</span>
+            </div>
+            <div class="empty-state">
+                <span>🔍</span>
+                <p>未找到相关新闻报道</p>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if results.enterprise %}
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>🏢</span> 关联企业信息
+                </div>
+                <span class="result-count">{{ results.enterprise|length }} 条结果</span>
+            </div>
+            
+            <div>
+                {% for item in results.enterprise %}
+                <div class="result-item">
+                    <div class="result-title">
+                        <a href="{{ item.get('url', '#') }}" target="_blank">
+                            {{ item.get('company_name', item.get('title', '无名称')) }}
+                        </a>
+                    </div>
+                    <div class="result-meta">
+                        <span>来源: {{ item.get('source', '未知') }}</span>
+                        {% if item.get('position') %}
+                        <span>职务: {{ item.position }}</span>
+                        {% endif %}
+                        {% if item.get('legal_person') %}
+                        <span>法定代表人: {{ item.legal_person }}</span>
+                        {% endif %}
+                        {% if item.get('shareholders') %}
+                        <span>股东: {{ item.shareholders }}</span>
+                        {% endif %}
+                        {% if item.get('registration') %}
+                        <span>登记信息: {{ item.registration }}</span>
+                        {% endif %}
+                        {% if item.get('status') %}
+                        <span>企业状态: {{ item.status }}</span>
+                        {% endif %}
+                        {% if item.get('address') %}
+                        <span>注册地址: {{ item.address }}</span>
+                        {% endif %}
+                        {% if item.get('credit_code') %}
+                        <span>信用代码: {{ item.credit_code }}</span>
+                        {% endif %}
+                        {% if item.get('relevance') %}
+                        <span class="relevance-badge {{ 'high' if item.relevance >= 0.8 else 'medium' if item.relevance >= 0.5 else 'low' }}">
+                            相关度: {{ (item.relevance * 100)|round|int }}%
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if item.get('description') %}
+                    <div class="result-summary">{{ item.description }}</div>
+                    {% endif %}
+                    {% if item.get('summary') %}
+                    <div class="result-summary">{{ item.summary }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>🏢</span> 关联企业信息
+                </div>
+                <span class="result-count">0 条结果</span>
+            </div>
+            <div class="empty-state">
+                <span>🏢</span>
+                <p>未找到关联企业信息</p>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if results.legal %}
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>⚖️</span> 法律纠纷信息
+                </div>
+                <span class="result-count">{{ results.legal|length }} 条结果</span>
+            </div>
+            
+            <div>
+                {% for item in results.legal %}
+                <div class="result-item">
+                    <div class="result-title">
+                        <a href="{{ item.get('url', '#') }}" target="_blank">{{ item.get('title', '无标题') }}</a>
+                    </div>
+                    <div class="result-meta">
+                        <span>来源: {{ item.get('source', '未知') }}</span>
+                        {% if item.get('relevance') %}
+                        <span class="relevance-badge {{ 'high' if item.relevance >= 0.8 else 'medium' if item.relevance >= 0.5 else 'low' }}">
+                            相关度: {{ (item.relevance * 100)|round|int }}%
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if item.get('summary') %}
+                    <div class="result-summary">{{ item.summary }}</div>
+                    {% endif %}
+                    {% if item.get('note') %}
+                    <div class="note">💡 {{ item.note }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>⚖️</span> 法律纠纷信息
+                </div>
+                <span class="result-count">0 条结果</span>
+            </div>
+            <div class="empty-state">
+                <span>⚖️</span>
+                <p>未找到法律纠纷信息</p>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>⚠️</span> 重名信息甄别说明
+                </div>
+            </div>
+            <p style="color: #666; line-height: 1.6;">
+                本系统已结合行业、地域、任职背景等信息进行交叉比对，
+                自动排除同名无关人员的干扰。搜索结果已按相关度排序，
+                高相关度结果更可能与目标人物匹配。建议人工复核重要信息。
+            </p>
+        </div>
+        
+        <div class="nav-buttons">
+            <a href="{{ url_for('index') }}" class="btn btn-outline">
+                ← 返回首页
+            </a>
+            <button onclick="window.print()" class="btn">
+                🖨️ 打印报告
+            </button>
+        </div>
+        
+        <div style="text-align: center; color: #999; font-size: 0.85rem; margin-top: 30px;">
+            <p>⚠️ 本报告仅整理公开网络信息，信息存在时效性与局限性</p>
+            <p>决策风险由使用方自行承担</p>
+        </div>
+    </div>
+</body>
+</html>
