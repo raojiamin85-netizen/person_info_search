@@ -2,6 +2,7 @@ import requests
 import time
 import random
 import re
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
 from config import LEGAL_URLS, DEFAULT_HEADERS, SEARCH_TIMEOUT, REQUEST_DELAY, MAX_SEARCH_RESULTS
@@ -17,14 +18,26 @@ class LegalSearch:
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update(DEFAULT_HEADERS)
+        self.render_mode = self._is_render_env()
         
         self.use_selenium = False
+        if self.render_mode:
+            logger.info("检测到 Render 环境，法律查询将使用轻量模式")
+            return
+
         try:
             from selenium import webdriver
             self.use_selenium = True
             logger.info("LegalSearch: Selenium已加载")
         except ImportError:
             pass
+
+    def _is_render_env(self):
+        return bool(
+            os.environ.get('RENDER')
+            or os.environ.get('RENDER_SERVICE_ID')
+            or os.environ.get('RENDER_EXTERNAL_URL')
+        )
     
     def _build_query(self, person_info, keywords):
         name = person_info.get('name', '')
@@ -185,19 +198,19 @@ class LegalSearch:
         return results
     
     def search_wenshu(self, person_info, num_results=5):
-        return self._search_with_engine(person_info, '裁判文书 判决书', '中国裁判文书网', num_results)
+        return self._search_with_engine(person_info, '裁判文书 判决书', '中国裁判文书网', 3 if self.render_mode else num_results)
     
     def search_court(self, person_info, num_results=5):
-        return self._search_with_engine(person_info, '开庭公告 审判流程', '中国审判流程信息公开网', num_results)
+        return self._search_with_engine(person_info, '开庭公告 审判流程', '中国审判流程信息公开网', 3 if self.render_mode else num_results)
     
     def search_zxgk(self, person_info, num_results=5):
-        return self._search_with_engine(person_info, '被执行人 失信名单 限制消费', '中国执行信息公开网', num_results)
+        return self._search_with_engine(person_info, '被执行人 失信名单 限制消费', '中国执行信息公开网', 3 if self.render_mode else num_results)
     
     def search_gonggao(self, person_info, num_results=5):
-        return self._search_with_engine(person_info, '法院公告 拍卖公告', '人民法院公告网', num_results)
+        return self._search_with_engine(person_info, '法院公告 拍卖公告', '人民法院公告网', 3 if self.render_mode else num_results)
     
     def search_gsxt(self, person_info, num_results=5):
-        return self._search_with_engine(person_info, '企业失信 经营异常 行政处罚', '国家企业信用信息公示系统', num_results)
+        return self._search_with_engine(person_info, '企业失信 经营异常 行政处罚', '国家企业信用信息公示系统', 3 if self.render_mode else num_results)
     
     def search_all(self, person_info):
         all_results = []
@@ -209,8 +222,11 @@ class LegalSearch:
             ('人民法院公告网', self.search_gonggao),
             ('国家企业信用信息公示系统', self.search_gsxt)
         ]
+
+        if self.render_mode:
+            search_methods = search_methods[:2]
         
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=1 if self.render_mode else 2) as executor:
             futures = {}
             for source_name, method in search_methods:
                 logger.info(f"启动{source_name}查询...")
@@ -236,6 +252,8 @@ class LegalSearch:
             unique_results.append(result)
 
         unique_results.sort(key=lambda item: item.get('relevance', 0), reverse=True)
+        if self.render_mode:
+            unique_results = unique_results[:5]
         return unique_results
 
 if __name__ == '__main__':

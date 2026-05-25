@@ -2,6 +2,7 @@ import requests
 import time
 import random
 import re
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
 from config import DEFAULT_HEADERS, SEARCH_TIMEOUT, REQUEST_DELAY
@@ -16,14 +17,26 @@ class EnterpriseSearch:
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update(DEFAULT_HEADERS)
+        self.render_mode = self._is_render_env()
         self.use_selenium = False
         
+        if self.render_mode:
+            logger.info("检测到 Render 环境，企业查询将使用轻量模式")
+            return
+
         try:
             from selenium import webdriver
             self.use_selenium = True
             logger.info("EnterpriseSearch: Selenium已加载")
         except ImportError:
             logger.warning("EnterpriseSearch: Selenium未安装")
+
+    def _is_render_env(self):
+        return bool(
+            os.environ.get('RENDER')
+            or os.environ.get('RENDER_SERVICE_ID')
+            or os.environ.get('RENDER_EXTERNAL_URL')
+        )
     
     def _is_valid_company_name(self, name):
         if not name or len(name) < 2:
@@ -57,7 +70,6 @@ class EnterpriseSearch:
             queries.extend([
                 f'{company} 企查查 法定代表人 股东 注册资本 统一社会信用代码',
                 f'{company} 天眼查 经营范围 企业状态 注册资本',
-                f'{company} 爱企查 法定代表人 股东 经营范围',
             ])
 
         if name and company:
@@ -76,7 +88,9 @@ class EnterpriseSearch:
             queries.append(f'{company} 工商信息')
         if name:
             queries.append(f'{name} 企查查')
-            queries.append(f'{name} 天眼查')
+
+        if self.render_mode:
+            queries = queries[:2]
 
         unique_queries = []
         seen = set()
@@ -277,7 +291,8 @@ class EnterpriseSearch:
             logger.info(f"企业搜索: {query}")
             results = self._search_with_selenium(query, person_info)
             all_results.extend(results)
-            time.sleep(REQUEST_DELAY)
+            if not self.render_mode:
+                time.sleep(REQUEST_DELAY)
         
         seen = set()
         unique_results = []
@@ -288,6 +303,8 @@ class EnterpriseSearch:
                 unique_results.append(r)
 
         unique_results.sort(key=lambda item: item.get('relevance', 0), reverse=True)
+        if self.render_mode:
+            unique_results = unique_results[:3]
         
         logger.info(f"企业搜索完成，共获取 {len(unique_results)} 条去重结果")
         return unique_results

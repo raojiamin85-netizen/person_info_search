@@ -2,7 +2,7 @@ import requests
 import time
 import random
 import re
-import threading
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
 from config import SEARCH_URLS, DEFAULT_HEADERS, SEARCH_TIMEOUT, REQUEST_DELAY, MAX_SEARCH_RESULTS
@@ -20,7 +20,12 @@ class WebSearch:
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update(DEFAULT_HEADERS)
+        self.render_mode = self._is_render_env()
         self.use_selenium = False
+
+        if self.render_mode:
+            logger.info("检测到 Render 环境，将使用轻量搜索模式")
+            return
         
         try:
             from selenium import webdriver
@@ -29,6 +34,13 @@ class WebSearch:
             logger.info("Selenium 已加载，将使用浏览器模式")
         except ImportError:
             logger.warning("Selenium 未安装，将使用简单HTTP请求模式")
+
+    def _is_render_env(self):
+        return bool(
+            os.environ.get('RENDER')
+            or os.environ.get('RENDER_SERVICE_ID')
+            or os.environ.get('RENDER_EXTERNAL_URL')
+        )
     
     def _random_headers(self):
         headers = DEFAULT_HEADERS.copy()
@@ -245,6 +257,8 @@ class WebSearch:
         return results
     
     def search_wechat(self, query, num_results=MAX_SEARCH_RESULTS):
+        if self.render_mode:
+            return []
         results = []
         try:
             url = 'https://weixin.sogou.com/weixin'
@@ -337,19 +351,23 @@ class WebSearch:
 
         if company:
             queries.append(f'{name} {company} 新闻 报道')
-            queries.append(f'{name} {company} 履历')
-            queries.append(f'{name} {company} 访谈 专访')
+            if not self.render_mode:
+                queries.append(f'{name} {company} 履历')
+                queries.append(f'{name} {company} 访谈 专访')
         if position:
             queries.append(f'{name} {position} 报道')
-            queries.append(f'{name} {position} 任职 履历')
+            if not self.render_mode:
+                queries.append(f'{name} {position} 任职 履历')
         if region:
             queries.append(f'{name} {region} 新闻')
-            queries.append(f'{name} {region} 采访')
+            if not self.render_mode:
+                queries.append(f'{name} {region} 采访')
 
         queries.append(f'{name} 人物 报道')
-        queries.append(f'{name} 新闻 采访')
-        queries.append(f'{name} 履历 任职')
-        queries.append(f'{name} 专访 报道')
+        if not self.render_mode:
+            queries.append(f'{name} 新闻 采访')
+            queries.append(f'{name} 履历 任职')
+            queries.append(f'{name} 专访 报道')
 
         unique_queries = []
         seen = set()
@@ -383,25 +401,27 @@ class WebSearch:
     
     def search_all(self, person_info):
         queries = self._build_queries(person_info)
-        
-        logger.info(f"搜索关键词列表: {queries}")
-        
-        all_results = []
-        search_methods = [
+        max_workers = 1 if self.render_mode else 2
+        search_methods = [('必应搜索', self.search_bing)] if self.render_mode else [
             ('百度搜索', self.search_baidu),
             ('必应搜索', self.search_bing),
             ('搜狗搜索', self.search_sogou)
         ]
         
+        logger.info(f"搜索关键词列表: {queries}")
+        
+        all_results = []
+        
         def search_with_query(search_method_name, method, query):
             try:
                 logger.info(f"启动{search_method_name}: {query}")
-                return method(query)
+                limit = 3 if self.render_mode else MAX_SEARCH_RESULTS
+                return method(query, num_results=limit)
             except Exception as e:
                 logger.error(f"{search_method_name}({query})执行失败: {e}")
                 return []
         
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {}
             for query in queries:
                 for search_name, method in search_methods:
@@ -452,7 +472,7 @@ class WebSearch:
                 r['relevance'] = min(score, 1.0)
                 unique_results.append(r)
         
-        unique_results = unique_results[:20]
+        unique_results = unique_results[:8] if self.render_mode else unique_results[:20]
         
         logger.info(f"搜索完成，共获取 {len(unique_results)} 条相关结果")
         return unique_results
