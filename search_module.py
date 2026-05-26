@@ -440,7 +440,10 @@ class WebSearch:
         seen = set()
         unique_results = []
         has_context = any(person_info.get(field) for field in ('company', 'position', 'region'))
-        minimum_score = 0.45 if has_context else 0.32
+        if self.render_mode:
+            minimum_score = 0.2
+        else:
+            minimum_score = 0.45 if has_context else 0.32
         for r in all_results:
             title = r.get('title', '')
             summary = r.get('summary', '')
@@ -471,6 +474,16 @@ class WebSearch:
                 seen.add(key)
                 r['relevance'] = min(score, 1.0)
                 unique_results.append(r)
+
+        if self.render_mode and not unique_results:
+            name = person_info.get('name', '')
+            for r in all_results:
+                text = f"{r.get('title', '')} {r.get('summary', '')}"
+                if name and name in text:
+                    r['relevance'] = 0.2
+                    unique_results.append(r)
+                if len(unique_results) >= 5:
+                    break
         
         unique_results = unique_results[:8] if self.render_mode else unique_results[:20]
         

@@ -281,6 +281,73 @@ class EnterpriseSearch:
             logger.error(f"Selenium企业搜索失败: {e}")
         
         return results
+
+    def _search_with_http(self, query, person_info, num_results=10):
+        results = []
+        try:
+            url = 'https://www.baidu.com/s'
+            params = {'wd': query, 'pn': 0, 'rn': num_results}
+            self.session.headers['User-Agent'] = random.choice(USER_AGENTS)
+            response = self.session.get(url, params=params, timeout=SEARCH_TIMEOUT)
+            response.raise_for_status()
+
+            soup = BeautifulSoup(response.text, 'lxml')
+            items = soup.find_all('div', class_='result') or soup.find_all('div', class_='c-container')
+
+            for item in items[:num_results]:
+                title_tag = item.find('h3')
+                link_tag = item.find('a')
+                summary_tag = item.find('p', class_='c-abstract')
+
+                if not (title_tag and link_tag):
+                    continue
+
+                title_text = clean_text(title_tag.get_text())
+                summary_text = clean_text(summary_tag.get_text()) if summary_tag else ''
+
+                if not self._is_valid_company_name(title_text):
+                    continue
+
+                if not self._is_relevant_result(title_text, summary_text, person_info):
+                    continue
+
+                position = self._extract_position(title_text, summary_text)
+                details = self._extract_company_details(title_text, summary_text)
+
+                source_name = '企业查询'
+                if '企查查' in title_text or 'qcc' in link_tag.get('href', ''):
+                    source_name = '企查查'
+                elif '天眼查' in title_text or 'tianyancha' in link_tag.get('href', ''):
+                    source_name = '天眼查'
+                elif '爱企查' in title_text or 'aiqicha' in link_tag.get('href', ''):
+                    source_name = '爱企查'
+
+                result = {
+                    'company_name': title_text,
+                    'url': link_tag.get('href', ''),
+                    'legal_person': details.get('legal_person', ''),
+                    'shareholders': details.get('shareholders', ''),
+                    'registration': details.get('registration', ''),
+                    'status': details.get('status', ''),
+                    'address': details.get('address', ''),
+                    'business_scope': details.get('business_scope', ''),
+                    'credit_code': details.get('credit_code', ''),
+                    'position': position,
+                    'summary': summary_text[:200] if summary_text else '',
+                    'description': details.get('description', ''),
+                    'source': source_name,
+                    'type': 'enterprise'
+                }
+                result['relevance'] = self._score_enterprise_result(result, person_info)
+                if result['relevance'] < (0.25 if self.render_mode else 0.35):
+                    continue
+                results.append(result)
+
+            logger.info(f"HTTP企业搜索完成，获得 {len(results)} 条结果")
+        except Exception as e:
+            logger.error(f"HTTP企业搜索失败: {e}")
+
+        return results
     
     def search_all(self, person_info):
         search_queries = self._build_queries(person_info)
@@ -289,7 +356,11 @@ class EnterpriseSearch:
         
         for query in search_queries:
             logger.info(f"企业搜索: {query}")
-            results = self._search_with_selenium(query, person_info)
+            limit = 3 if self.render_mode else 10
+            if self.use_selenium:
+                results = self._search_with_selenium(query, person_info, num_results=limit)
+            else:
+                results = self._search_with_http(query, person_info, num_results=limit)
             all_results.extend(results)
             if not self.render_mode:
                 time.sleep(REQUEST_DELAY)
