@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import zipfile
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,16 @@ class ResumeParser:
         self.region_keywords = ['北京', '上海', '深圳', '广州', '杭州', '南京', '苏州', '成都', '武汉', '西安', '天津', '重庆', '省', '市', '区', '县']
 
     def extract_name(self, text):
+        label_patterns = [
+            r'(?:姓名|名字|Name)[:：\s]*([\u4e00-\u9fa5]{2,4})(?:老师|先生|女士)?',
+            r'([\u4e00-\u9fa5]{2,4})(?:老师|先生|女士)?\s*(?:姓名|名字|Name)',
+        ]
+
+        for pattern in label_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return match.group(1)
+
         lines = text.split('\n')
         for line in lines[:5]:
             line = line.strip()
@@ -142,8 +153,40 @@ class ResumeParser:
             return ""
 
     def parse_txt(self, filepath):
-        with open(filepath, 'r', encoding='utf-8') as f:
+        encodings = ['utf-8-sig', 'utf-8', 'gb18030', 'gbk', 'big5']
+        for encoding in encodings:
+            try:
+                with open(filepath, 'r', encoding=encoding) as f:
+                    return f.read()
+            except UnicodeDecodeError:
+                continue
+
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             return f.read()
+
+    def _detect_file_kind(self, filepath):
+        suffix = filepath.suffix.lower().lstrip('.')
+        if suffix in {'docx', 'pdf', 'jpg', 'jpeg', 'png', 'bmp', 'txt'}:
+            return suffix
+
+        try:
+            with open(filepath, 'rb') as f:
+                header = f.read(16)
+        except OSError:
+            return suffix
+
+        if header.startswith(b'PK\x03\x04'):
+            return 'docx'
+        if header.startswith(b'%PDF'):
+            return 'pdf'
+        if header.startswith(b'\xff\xd8\xff'):
+            return 'jpg'
+        if header.startswith(b'\x89PNG\r\n\x1a\n'):
+            return 'png'
+        if header.startswith(b'BM'):
+            return 'bmp'
+
+        return 'txt'
 
     def parse(self, filepath):
         filepath = Path(filepath)
@@ -151,18 +194,18 @@ class ResumeParser:
         if not filepath.exists():
             raise FileNotFoundError(f"文件不存在: {filepath}")
         
-        ext = filepath.suffix.lower()
+        file_kind = self._detect_file_kind(filepath)
         
-        if ext == '.docx':
+        if file_kind == 'docx':
             text = self.parse_docx(filepath)
-        elif ext == '.pdf':
+        elif file_kind == 'pdf':
             text = self.parse_pdf(filepath)
-        elif ext in ['.jpg', '.jpeg', '.png', '.bmp']:
+        elif file_kind in ['jpg', 'jpeg', 'png', 'bmp']:
             text = self.parse_image(filepath)
-        elif ext == '.txt':
+        elif file_kind == 'txt':
             text = self.parse_txt(filepath)
         else:
-            raise ValueError(f"不支持的文件格式: {ext}")
+            raise ValueError(f"不支持的文件格式: {filepath.suffix.lower()}")
         
         person_info = {
             'name': self.extract_name(text),

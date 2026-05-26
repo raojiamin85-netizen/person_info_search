@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="2">
+    <title>任务处理中 - 个人公开信息搜索系统</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            color: #1f2937;
+        }
+        .panel {
+            width: min(720px, 100%);
+            background: rgba(255, 255, 255, 0.96);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            padding: 32px;
+        }
+        h1 {
+            margin: 0 0 12px;
+            font-size: 1.8rem;
+        }
+        p {
+            line-height: 1.7;
+            color: #4b5563;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            background: #eef2ff;
+            color: #3730a3;
+            font-weight: 600;
+        }
+        .hint {
+            margin-top: 14px;
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+        .spinner {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 4px solid #c7d2fe;
+            border-top-color: #4f46e5;
+            animation: spin 1s linear infinite;
+            margin-bottom: 18px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <div class="spinner"></div>
+        <h1>任务处理中</h1>
+        <p>系统正在后台执行简历解析、相关性搜索和报告生成。免费层会优先保持页面响应，因此这里会轮询刷新结果。</p>
+        <div class="status">当前状态：{{ '排队中' if task.status == 'pending' else '正在处理' }}</div>
+        <div class="hint">任务编号：{{ task_id }}</div>
+        <div class="hint">如果页面停留较久，请稍等几秒后自动刷新。</div>
+    </div>
+</body>
+</html>

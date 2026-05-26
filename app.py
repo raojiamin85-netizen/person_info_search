@@ -1,14 +1,16 @@
 import os
 import json
 import traceback
+import uuid
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileField, FileRequired, FileAllowed
+from flask_wtf.file import FileField, FileRequired
 from wtforms import StringField, SubmitField
 from wtforms.validators import Optional
 from werkzeug.utils import secure_filename
 from pathlib import Path
 from utils import logger
+from async_tasks import create_search_task, get_task
 
 app = Flask(__name__)
 BASE_DIR = Path(__file__).resolve().parent
@@ -23,15 +25,9 @@ from main import PersonInfoSearcher
 
 searcher = PersonInfoSearcher()
 
-ALLOWED_EXTENSIONS = {'docx', 'pdf', 'jpg', 'jpeg', 'png', 'bmp', 'txt'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 class UploadForm(FlaskForm):
     file = FileField('上传简历', validators=[
         FileRequired(),
-        FileAllowed(ALLOWED_EXTENSIONS, '只支持 docx, pdf, jpg, png, bmp, txt 格式')
     ])
     name = StringField('姓名（可选，自动识别失败时使用）', validators=[Optional()])
     submit = SubmitField('开始搜索')
@@ -60,46 +56,29 @@ def index():
     manual_form = ManualForm()
     
     if request.method == 'POST':
-        if 'file' in request.files and request.files['file'].filename != '':
+        if 'file' in request.files:
             return handle_file_upload(upload_form)
-        elif request.form.get('name') and request.form.get('submit_type') == 'manual':
+        elif request.form.get('manual_submit'):
             return handle_manual_input(manual_form)
-        elif request.form.get('name'):
-            person_info = {
-                'name': request.form.get('name'),
-                'company': request.form.get('company', ''),
-                'position': request.form.get('position', ''),
-                'region': request.form.get('region', ''),
-                'phone': request.form.get('phone', '')
-            }
-            return do_search(person_info)
     
     return render_template('index.html', upload_form=upload_form, manual_form=manual_form)
 
 def handle_file_upload(form):
     if form.validate_on_submit():
         file = form.file.data
-        filename = secure_filename(file.filename)
+        filename = secure_filename(file.filename) or f'resume_{uuid.uuid4().hex}'
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
         try:
-            person_info = searcher.parse_resume_file(filepath)
-            
-            if not person_info.get('name'):
-                if form.name.data:
-                    person_info['name'] = form.name.data
-                else:
-                    flash('无法从简历中识别姓名，请手动输入', 'warning')
-                    os.remove(filepath)
-                    return redirect(url_for('index'))
-            
-            person_info['source'] = 'file_upload'
-            person_info['filename'] = filename
-            
-            os.remove(filepath)
-            
-            return do_search(person_info)
+            task_id = create_search_task({
+                'kind': 'resume_file',
+                'filepath': filepath,
+                'filename': filename,
+                'name_override': form.name.data.strip() if form.name.data else '',
+                'source': 'file_upload',
+            })
+            return redirect(url_for('task_status', task_id=task_id))
         except Exception as e:
             logger.exception("简历解析失败")
             flash(_friendly_error_message(e), 'danger')
@@ -125,7 +104,11 @@ def handle_manual_input(form):
         'source': 'manual_input'
     }
     
-    return do_search(person_info)
+    task_id = create_search_task({
+        'kind': 'manual_input',
+        'person_info': person_info,
+    })
+    return redirect(url_for('task_status', task_id=task_id))
 
 def do_search(person_info):
     try:
@@ -142,6 +125,28 @@ def do_search(person_info):
         logger.exception("搜索失败")
         flash(_friendly_error_message(e), 'danger')
         return redirect(url_for('index'))
+
+
+@app.route('/task/<task_id>')
+def task_status(task_id):
+    task = get_task(task_id)
+    if not task:
+        flash('任务不存在或已失效，请重新提交。', 'warning')
+        return redirect(url_for('index'))
+
+    if task['status'] in {'pending', 'running'}:
+        return render_template('task.html', task_id=task_id, task=task)
+
+    if task['status'] == 'error':
+        flash(task.get('error', '任务执行失败，请稍后重试。'), 'danger')
+        return redirect(url_for('index'))
+
+    return render_template(
+        'results.html',
+        person_info=task['person_info'],
+        results=task['results'],
+        report_files=task['report_files'],
+    )
 
 @app.route('/download/<filename>')
 def download_file(filename):
@@ -164,15 +169,45 @@ def api_search():
     }
     
     try:
-        results = searcher.search(person_info)
+        task_id = create_search_task({
+            'kind': 'manual_input',
+            'person_info': person_info,
+        })
         return jsonify({
             'success': True,
-            'person_info': person_info,
-            'results': results
-        })
+            'task_id': task_id,
+            'status_url': url_for('api_task_status', task_id=task_id),
+        }), 202
     except Exception as e:
         logger.exception("API 搜索失败")
         return jsonify({'success': False, 'error': _friendly_error_message(e)}), 500
+
+
+@app.route('/api/tasks/<task_id>')
+def api_task_status(task_id):
+    task = get_task(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': '任务不存在或已失效'}), 404
+
+    payload = {
+        'success': True,
+        'task_id': task_id,
+        'status': task['status'],
+    }
+
+    if task['status'] == 'done':
+        payload.update({
+            'person_info': task['person_info'],
+            'results': task['results'],
+            'report_files': task['report_files'],
+        })
+    elif task['status'] == 'error':
+        payload.update({
+            'success': False,
+            'error': task.get('error', '任务执行失败'),
+        })
+
+    return jsonify(payload)
 
 @app.errorhandler(413)
 def handle_large_file(_error):
