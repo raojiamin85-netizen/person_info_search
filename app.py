@@ -57,9 +57,9 @@ def index():
     
     if request.method == 'POST':
         file_upload = request.files.get('file')
-        if file_upload and file_upload.filename:
+        if request.form.get('form_type') == 'upload' and file_upload and file_upload.filename:
             return handle_file_upload(upload_form)
-        elif request.form.get('manual_submit'):
+        elif request.form.get('form_type') == 'manual':
             return handle_manual_input(manual_form)
     
     return render_template('index.html', upload_form=upload_form, manual_form=manual_form)

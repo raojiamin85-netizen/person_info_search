@@ -290,6 +290,7 @@
             
             <div id="upload-tab">
                 <form id="upload-form" method="POST" enctype="multipart/form-data" novalidate>
+                    <input type="hidden" name="form_type" value="upload">
                     {{ upload_form.hidden_tag() }}
                     
                     <div class="form-group">
@@ -313,6 +314,7 @@
             
             <div id="manual-tab" class="hidden">
                 <form method="POST">
+                    <input type="hidden" name="form_type" value="manual">
                     {{ manual_form.hidden_tag() }}
                     
                     <div class="form-row">
