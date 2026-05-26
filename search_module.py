@@ -53,6 +53,9 @@ class WebSearch:
                 self.session.headers.update(self._random_headers())
                 response = self.session.get(url, params=params, timeout=SEARCH_TIMEOUT)
                 response.raise_for_status()
+
+                if response.apparent_encoding:
+                    response.encoding = response.apparent_encoding
                 
                 if '安全验证' in response.text or '百度安全验证' in response.text:
                     logger.warning(f"请求被安全验证拦截，尝试第 {attempt + 1} 次")
@@ -440,6 +443,7 @@ class WebSearch:
         seen = set()
         unique_results = []
         has_context = any(person_info.get(field) for field in ('company', 'position', 'region'))
+        name = person_info.get('name', '')
         if self.render_mode:
             minimum_score = 0.1
         else:
@@ -455,7 +459,6 @@ class WebSearch:
                     continue
 
             score = 0
-            name = person_info.get('name', '')
             if name and name in title:
                 score += 0.4
             if name and name in (title + summary):

@@ -294,6 +294,9 @@ class EnterpriseSearch:
             response = self.session.get(url, params=params, timeout=SEARCH_TIMEOUT)
             response.raise_for_status()
 
+            if response.apparent_encoding:
+                response.encoding = response.apparent_encoding
+
             soup = BeautifulSoup(response.text, 'lxml')
             items = soup.find_all('div', class_='result') or soup.find_all('div', class_='c-container')
 

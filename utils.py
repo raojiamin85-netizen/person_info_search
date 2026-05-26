@@ -1,3 +1,4 @@
+import os
 import re
 import logging
 from datetime import datetime
@@ -152,7 +153,10 @@ def match_person(info1, info2):
 def deduplicate_results(results, person_info, threshold=None):
     if threshold is None:
         has_context = any(person_info.get(field) for field in ('company', 'position', 'region'))
-        threshold = 0.42 if has_context else 0.3
+        if any(os.environ.get(key) for key in ('RENDER', 'RENDER_SERVICE_ID', 'RENDER_EXTERNAL_URL')):
+            threshold = 0.15
+        else:
+            threshold = 0.42 if has_context else 0.3
     unique_results = []
     seen_keys = set()
     
