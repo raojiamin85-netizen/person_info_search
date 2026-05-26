@@ -402,7 +402,7 @@ class WebSearch:
     def search_all(self, person_info):
         queries = self._build_queries(person_info)
         max_workers = 1 if self.render_mode else 2
-        search_methods = [('必应搜索', self.search_bing)] if self.render_mode else [
+        search_methods = [
             ('百度搜索', self.search_baidu),
             ('必应搜索', self.search_bing),
             ('搜狗搜索', self.search_sogou)
@@ -441,7 +441,7 @@ class WebSearch:
         unique_results = []
         has_context = any(person_info.get(field) for field in ('company', 'position', 'region'))
         if self.render_mode:
-            minimum_score = 0.2
+            minimum_score = 0.1
         else:
             minimum_score = 0.45 if has_context else 0.32
         for r in all_results:
@@ -449,7 +449,10 @@ class WebSearch:
             summary = r.get('summary', '')
             
             if not self._is_relevant(title, summary, person_info):
-                continue
+                if self.render_mode and name and name in (title + summary):
+                    pass
+                else:
+                    continue
 
             score = 0
             name = person_info.get('name', '')
@@ -467,7 +470,8 @@ class WebSearch:
                 score += 0.1
 
             if score < minimum_score:
-                continue
+                if not self.render_mode:
+                    continue
             
             key = title + r.get('url', '')
             if key not in seen:

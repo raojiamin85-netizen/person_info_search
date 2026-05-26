@@ -158,6 +158,9 @@ class EnterpriseSearch:
         text = f'{title} {summary}'
         enterprise_keywords = ['企查查', '天眼查', '爱企查', '工商', '注册资本', '法定代表人', '股东', '经营范围', '企业状态', '统一社会信用代码']
 
+        if self.render_mode and name and name in text:
+            return True
+
         if company and company in text:
             return True
 
