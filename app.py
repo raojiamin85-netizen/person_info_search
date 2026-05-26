@@ -56,7 +56,8 @@ def index():
     manual_form = ManualForm()
     
     if request.method == 'POST':
-        if 'file' in request.files:
+        file_upload = request.files.get('file')
+        if file_upload and file_upload.filename:
             return handle_file_upload(upload_form)
         elif request.form.get('manual_submit'):
             return handle_manual_input(manual_form)
